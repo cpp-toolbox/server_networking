@@ -2,13 +2,10 @@
 #include "sbpt_generated_includes.hpp"
 
 #include <algorithm>
+#include <utility>
 
-void default_packet_callback(ENetPacket *packet) {
-    spdlog::info("Default packet callback: Packet received with length {}.", packet->dataLength);
-}
 
-Server::Server(uint16_t port, PacketCallback packet_callback)
-    : port(port), packet_callback(packet_callback), server(nullptr) {}
+Server::Server(uint16_t port) : port(port), server(nullptr) {}
 
 Server::~Server() {
     if (server != nullptr) {
@@ -36,19 +33,30 @@ void Server::initialize_network() {
     spdlog::get(Systems::networking)->info("Server initialized on port {}.", port);
 }
 
-void Server::process_network_events() {
+std::vector<PacketData> Server::get_network_events_since_last_tick() {
     ENetEvent event;
+
+    std::vector<PacketData> received_packets;
+
+
     while (enet_host_service(server, &event, 0) > 0) {
         switch (event.type) {
-        case ENET_EVENT_TYPE_CONNECT:
+        case ENET_EVENT_TYPE_CONNECT: {
             spdlog::get(Systems::networking)->info("A new client connected from {}:{}.",
-                         event.peer->address.host, event.peer->address.port);
+                                                   event.peer->address.host, event.peer->address.port);
             clients.push_back(event.peer);
-            break;
+
+            unsigned int client_id = num_clients_that_connected; // The unique index for the new client
+
+            spdlog::get(Systems::networking)->info("Client added with unique index: {}", client_id);
+            on_connect_callback(client_id);
+
+            num_clients_that_connected += 1;
+        } break;
 
         case ENET_EVENT_TYPE_RECEIVE:
             spdlog::get(Systems::networking)->info("Packet received from client {}.", event.peer->address.host);
-            packet_callback(event.packet);
+            received_packets.push_back(parse_packet(event.packet));
             enet_packet_destroy(event.packet);
             break;
 
@@ -62,6 +70,7 @@ void Server::process_network_events() {
             break;
         }
     }
+    return received_packets;
 }
 
 void Server::unreliable_broadcast(const void *data, size_t data_size) {
@@ -72,6 +81,12 @@ void Server::unreliable_broadcast(const void *data, size_t data_size) {
     enet_host_flush(server);
 }
 
+/**
+ * @brief Sends out a reliable packet with the specified data immediately
+ *
+ * @param data
+ * @param data_size
+ */
 void Server::reliable_broadcast(const void *data, size_t data_size) {
     ENetPacket *packet = enet_packet_create(data, data_size, ENET_PACKET_FLAG_RELIABLE);
     for (auto &client : clients) {
