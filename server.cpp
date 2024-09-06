@@ -73,6 +73,13 @@ std::vector<PacketData> Server::get_network_events_since_last_tick() {
     return received_packets;
 }
 
+void Server::unreliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size) {
+    ENetPacket *packet = enet_packet_create(data, data_size, 0);
+    ENetPeer * client_to_send_to = clients.at(id_of_client_to_send_to);
+    enet_peer_send(client_to_send_to, 0, packet);
+    enet_host_flush(server);
+}
+
 void Server::unreliable_broadcast(const void *data, size_t data_size) {
     ENetPacket *packet = enet_packet_create(data, data_size, 0);
     for (auto &client : clients) {
@@ -92,5 +99,12 @@ void Server::reliable_broadcast(const void *data, size_t data_size) {
     for (auto &client : clients) {
         enet_peer_send(client, 0, packet);
     }
+    enet_host_flush(server);
+}
+
+void Server::reliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size) {
+    ENetPacket *packet = enet_packet_create(data, data_size, ENET_PACKET_FLAG_RELIABLE);
+    ENetPeer *client_to_send_to = clients.at(id_of_client_to_send_to);
+    enet_peer_send(client_to_send_to, 0, packet);
     enet_host_flush(server);
 }

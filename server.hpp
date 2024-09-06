@@ -25,7 +25,9 @@ class Server {
     void initialize_network();
     std::vector<PacketData> get_network_events_since_last_tick();
     void unreliable_broadcast(const void *data, size_t data_size);
+    void unreliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size);
     void reliable_broadcast(const void *data, size_t data_size);
+    void reliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size);
 
   private:
     unsigned int num_clients_that_connected = 0;
