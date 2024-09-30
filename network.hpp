@@ -1,5 +1,5 @@
-#ifndef SERVER_HPP
-#define SERVER_HPP
+#ifndef SERVER_NETWORK_HPP
+#define SERVER_NETWORK_HPP
 
 #include <enet/enet.h>
 #include <spdlog/spdlog.h>
@@ -16,14 +16,16 @@ using OnConnectCallback = std::function<void(unsigned int)>;
  * \details A server that keeps track of the connected clients and provides methods for sending and receving data
  * every connected client has a unique id, which is the index at which the client is stored in the clients vector
  */
-class Server {
+class Network {
   public:
-    explicit Server(uint16_t port);
-    ~Server();
+    explicit Network(uint16_t port, const std::vector<spdlog::sink_ptr> &sinks = {});
+    ~Network();
 
-    void set_on_connect_callback(OnConnectCallback &connect_cb) {this->on_connect_callback = connect_cb;};
+    LoggerComponent logger_component;
+
+    void set_on_connect_callback(OnConnectCallback &connect_cb) { this->on_connect_callback = connect_cb; };
     void initialize_network();
-    std::vector<PacketData> get_network_events_since_last_tick();
+    std::vector<void *> get_network_events_since_last_tick();
     void unreliable_broadcast(const void *data, size_t data_size);
     void unreliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size);
     void reliable_broadcast(const void *data, size_t data_size);
@@ -37,4 +39,4 @@ class Server {
     std::vector<ENetPeer *> clients;
 };
 
-#endif // SERVER_HPP
+#endif // SERVER_NETWORK_HPP
