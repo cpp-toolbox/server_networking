@@ -120,7 +120,14 @@ void Network::reliable_broadcast(const void *data, size_t data_size) {
 
 void Network::reliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size) {
     ENetPacket *packet = enet_packet_create(data, data_size, ENET_PACKET_FLAG_RELIABLE);
+    
     ENetPeer *client_to_send_to = clients.at(id_of_client_to_send_to);
+    
+    if (logger_component.logging_enabled) {
+        logger_component.get_logger()->info("Sending packet of size {} bytes to client {}.", data_size, client_to_send_to->address.host);
+    }
+
     enet_peer_send(client_to_send_to, 0, packet);
+    
     enet_host_flush(server);
 }
