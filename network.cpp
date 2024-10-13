@@ -42,10 +42,12 @@ void Network::initialize_network() {
     }
 }
 
-std::vector<void *> Network::get_network_events_since_last_tick() {
-    ENetEvent event;
+std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
 
-    std::vector<void *> received_packets;
+    ENetEvent event;
+    std::vector<PacketWithSize> received_packets;
+
+    PacketWithSize packet_with_size;
 
     while (enet_host_service(server, &event, 0) > 0) {
         switch (event.type) {
@@ -68,9 +70,17 @@ std::vector<void *> Network::get_network_events_since_last_tick() {
 
         case ENET_EVENT_TYPE_RECEIVE:
             if (logger_component.logging_enabled) {
-                logger_component.get_logger()->info("Packet received from client {}.", event.peer->address.host);
+                logger_component.get_logger()->info("Packet received from peer {}: size {} bytes.",
+                                                    event.peer->address.host, event.packet->dataLength);
             }
-            received_packets.push_back(event.packet);
+
+            packet_with_size.data.resize(event.packet->dataLength);
+
+            std::memcpy(packet_with_size.data.data(), event.packet->data, event.packet->dataLength);
+            packet_with_size.size = event.packet->dataLength;
+
+            received_packets.push_back(packet_with_size);
+
             enet_packet_destroy(event.packet);
             break;
 
@@ -120,14 +130,15 @@ void Network::reliable_broadcast(const void *data, size_t data_size) {
 
 void Network::reliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size) {
     ENetPacket *packet = enet_packet_create(data, data_size, ENET_PACKET_FLAG_RELIABLE);
-    
+
     ENetPeer *client_to_send_to = clients.at(id_of_client_to_send_to);
-    
+
     if (logger_component.logging_enabled) {
-        logger_component.get_logger()->info("Sending packet of size {} bytes to client {}.", data_size, client_to_send_to->address.host);
+        logger_component.get_logger()->info("Sending packet of size {} bytes to client {}.", data_size,
+                                            client_to_send_to->address.host);
     }
 
     enet_peer_send(client_to_send_to, 0, packet);
-    
+
     enet_host_flush(server);
 }

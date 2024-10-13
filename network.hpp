@@ -10,6 +10,11 @@
 
 #include "sbpt_generated_includes.hpp"
 
+struct PacketWithSize {
+    std::vector<char> data; // Use std::vector<char> to hold packet data
+    size_t size;            // Size of the packet data
+};
+
 using OnConnectCallback = std::function<void(unsigned int)>;
 
 /**
@@ -25,7 +30,8 @@ class Network {
 
     void set_on_connect_callback(OnConnectCallback &connect_cb) { this->on_connect_callback = connect_cb; };
     void initialize_network();
-    std::vector<void *> get_network_events_since_last_tick();
+
+    std::vector<PacketWithSize> get_network_events_since_last_tick();
     void unreliable_broadcast(const void *data, size_t data_size);
     void unreliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size);
     void reliable_broadcast(const void *data, size_t data_size);
