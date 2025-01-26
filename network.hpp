@@ -20,7 +20,9 @@ using OnConnectCallback = std::function<void(unsigned int)>;
 /**
  * \details A server that keeps track of the connected clients and provides methods for sending and receving data
  * every connected client has a unique id, which is the index at which the client is stored in the clients vector
- */
+ * you must call initialize_network() before working with the system  
+*/
+
 class Network {
   public:
     explicit Network(uint16_t port, const std::vector<spdlog::sink_ptr> &sinks = {});
