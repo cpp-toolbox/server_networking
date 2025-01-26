@@ -2,6 +2,7 @@
 #include "sbpt_generated_includes.hpp"
 
 #include <algorithm>
+#include <iostream>
 #include <spdlog/logger.h>
 #include <utility>
 
@@ -63,7 +64,14 @@ std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
             if (logger_component.logging_enabled) {
                 logger_component.get_logger()->info("Client added with unique index: {}", client_id);
             }
-            on_connect_callback(client_id);
+
+            if (on_connect_callback) {
+                on_connect_callback(client_id);
+            } else {
+                if (logger_component.logging_enabled) {
+                    logger_component.get_logger()->warn("on_connect_callback is not set. Skipping callback.");
+                }
+            }
 
             num_clients_that_connected += 1;
         } break;
