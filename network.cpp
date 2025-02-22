@@ -57,9 +57,11 @@ std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
                 logger_component.get_logger()->info("A new client connected from {}:{}.", event.peer->address.host,
                                                     event.peer->address.port);
             }
-            clients.push_back(event.peer);
+
+            std::cout << "GOT CONNECT" << std::endl;
 
             unsigned int client_id = num_clients_that_connected; // The unique index for the new client
+            client_id_to_enet_peer[client_id] = event.peer;
 
             if (logger_component.logging_enabled) {
                 logger_component.get_logger()->info("Client added with unique index: {}", client_id);
@@ -73,7 +75,7 @@ std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
                 }
             }
 
-            num_clients_that_connected += 1;
+            num_clients_that_connected++;
         } break;
 
         case ENET_EVENT_TYPE_RECEIVE:
@@ -92,13 +94,30 @@ std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
             enet_packet_destroy(event.packet);
             break;
 
-        case ENET_EVENT_TYPE_DISCONNECT:
+        case ENET_EVENT_TYPE_DISCONNECT: {
             if (logger_component.logging_enabled) {
                 logger_component.get_logger()->info("Client {} disconnected.", event.peer->address.host);
             }
-            clients.erase(std::remove(clients.begin(), clients.end(), event.peer), clients.end());
+
+            auto it = std::find_if(client_id_to_enet_peer.begin(), client_id_to_enet_peer.end(),
+                                   [&](const auto &pair) { return pair.second == event.peer; });
+            if (it != client_id_to_enet_peer.end()) {
+                if (logger_component.logging_enabled) {
+                    logger_component.get_logger()->info("Client {} disconnected.", it->first);
+                }
+                client_id_to_enet_peer.erase(it);
+
+                if (on_disconnect_callback) {
+                    on_disconnect_callback(it->first);
+                } else {
+                    if (logger_component.logging_enabled) {
+                        logger_component.get_logger()->warn("on_disconnect_callback is not set. Skipping callback.");
+                    }
+                }
+            }
+
             event.peer->data = nullptr;
-            break;
+        } break;
 
         default:
             break;
@@ -108,15 +127,17 @@ std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
 }
 
 void Network::unreliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size) {
+    if (client_id_to_enet_peer.find(id_of_client_to_send_to) == client_id_to_enet_peer.end())
+        return;
     ENetPacket *packet = enet_packet_create(data, data_size, 0);
-    ENetPeer *client_to_send_to = clients.at(id_of_client_to_send_to);
+    ENetPeer *client_to_send_to = client_id_to_enet_peer.at(id_of_client_to_send_to);
     enet_peer_send(client_to_send_to, 0, packet);
     enet_host_flush(server);
 }
 
 void Network::unreliable_broadcast(const void *data, size_t data_size) {
     ENetPacket *packet = enet_packet_create(data, data_size, 0);
-    for (auto &client : clients) {
+    for (auto &[id, client] : client_id_to_enet_peer) {
         enet_peer_send(client, 0, packet);
     }
     enet_host_flush(server);
@@ -130,23 +151,45 @@ void Network::unreliable_broadcast(const void *data, size_t data_size) {
  */
 void Network::reliable_broadcast(const void *data, size_t data_size) {
     ENetPacket *packet = enet_packet_create(data, data_size, ENET_PACKET_FLAG_RELIABLE);
-    for (auto &client : clients) {
+    for (auto &[id, client] : client_id_to_enet_peer) {
         enet_peer_send(client, 0, packet);
     }
     enet_host_flush(server);
 }
 
-void Network::reliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size) {
+void Network::reliable_broadcast_to_everyone_but(unsigned int id_of_client_to_exclude, const void *data,
+                                                 size_t data_size) {
     ENetPacket *packet = enet_packet_create(data, data_size, ENET_PACKET_FLAG_RELIABLE);
+    for (auto &[id, client] : client_id_to_enet_peer) {
+        if (id != id_of_client_to_exclude) {
+            enet_peer_send(client, 0, packet);
+        }
+    }
+    enet_host_flush(server);
+}
 
-    ENetPeer *client_to_send_to = clients.at(id_of_client_to_send_to);
+void Network::reliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size) {
+
+    if (client_id_to_enet_peer.find(id_of_client_to_send_to) == client_id_to_enet_peer.end())
+        return;
+    ENetPacket *packet = enet_packet_create(data, data_size, ENET_PACKET_FLAG_RELIABLE);
+    ENetPeer *client_to_send_to = client_id_to_enet_peer.at(id_of_client_to_send_to);
 
     if (logger_component.logging_enabled) {
         logger_component.get_logger()->info("Sending packet of size {} bytes to client {}.", data_size,
                                             client_to_send_to->address.host);
     }
-
     enet_peer_send(client_to_send_to, 0, packet);
-
     enet_host_flush(server);
+}
+
+std::vector<unsigned int> Network::get_connected_client_ids() {
+    std::vector<unsigned int> client_ids;
+    client_ids.reserve(client_id_to_enet_peer.size());
+
+    for (const auto &pair : client_id_to_enet_peer) {
+        client_ids.push_back(pair.first);
+    }
+
+    return client_ids;
 }
