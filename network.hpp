@@ -2,7 +2,6 @@
 #define SERVER_NETWORK_HPP
 
 #include <enet/enet.h>
-#include <spdlog/spdlog.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,10 +20,10 @@ using OnDisconnectCallback = std::function<void(unsigned int)>;
 
 class Network {
   public:
-    explicit Network(uint16_t port, const std::vector<spdlog::sink_ptr> &sinks = {});
+    explicit Network(uint16_t port);
     ~Network();
 
-    LoggerComponent logger_component;
+    ConsoleLogger logger{"network"};
 
     void set_on_connect_callback(OnConnectCallback &connect_cb) { this->on_connect_callback = connect_cb; };
     void set_on_disconnect_callback(OnDisconnectCallback &disconnect_cb) {

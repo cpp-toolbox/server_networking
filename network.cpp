@@ -6,9 +6,7 @@
 #include <spdlog/logger.h>
 #include <utility>
 
-Network::Network(uint16_t port, const std::vector<spdlog::sink_ptr> &sinks) : port(port), server(nullptr) {
-    logger_component = LoggerComponent("network", sinks);
-}
+Network::Network(uint16_t port) : port(port), server(nullptr) {}
 
 Network::~Network() {
     if (server != nullptr) {
@@ -19,9 +17,7 @@ Network::~Network() {
 
 void Network::initialize_network() {
     if (enet_initialize() != 0) {
-        if (logger_component.logging_enabled) {
-            logger_component.get_logger()->error("An error occurred while initializing ENet.");
-        }
+        logger.error("An error occurred while initializing ENet.");
         throw std::runtime_error("ENet initialization failed.");
     }
 
@@ -31,16 +27,11 @@ void Network::initialize_network() {
 
     server = enet_host_create(&address, 32, 2, 0, 0);
     if (server == nullptr) {
-
-        if (logger_component.logging_enabled) {
-            logger_component.get_logger()->error("An error occurred while trying to create an ENet server host.");
-        }
+        logger.error("An error occurred while trying to create an ENet server host.");
         throw std::runtime_error("ENet server host creation failed.");
     }
 
-    if (logger_component.logging_enabled) {
-        logger_component.get_logger()->info("Network initialized on port {}.", port);
-    }
+    logger.info("Network initialized on port {}.", port)
 }
 
 std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
@@ -53,36 +44,29 @@ std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
     while (enet_host_service(server, &event, 0) > 0) {
         switch (event.type) {
         case ENET_EVENT_TYPE_CONNECT: {
-            if (logger_component.logging_enabled) {
-                logger_component.get_logger()->info("A new client connected from {}:{}.", event.peer->address.host,
-                                                    event.peer->address.port);
-            }
+
+            logger.info("A new client connected from {}:{}.", event.peer->address.host, event.peer->address.port);
 
             std::cout << "GOT CONNECT" << std::endl;
 
             unsigned int client_id = num_clients_that_connected; // The unique index for the new client
             client_id_to_enet_peer[client_id] = event.peer;
 
-            if (logger_component.logging_enabled) {
-                logger_component.get_logger()->info("Client added with unique index: {}", client_id);
-            }
+            logger.info("Client added with unique index: {}", client_id);
 
             if (on_connect_callback) {
                 on_connect_callback(client_id);
             } else {
-                if (logger_component.logging_enabled) {
-                    logger_component.get_logger()->warn("on_connect_callback is not set. Skipping callback.");
-                }
+                logger.warn("on_connect_callback is not set. Skipping callback.");
             }
 
             num_clients_that_connected++;
         } break;
 
         case ENET_EVENT_TYPE_RECEIVE:
-            if (logger_component.logging_enabled) {
-                logger_component.get_logger()->info("Packet received from peer {}: size {} bytes.",
-                                                    event.peer->address.host, event.packet->dataLength);
-            }
+
+            logger.info("Packet received from peer {}: size {} bytes.", event.peer->address.host,
+                        event.packet->dataLength);
 
             packet_with_size.data.resize(event.packet->dataLength);
 
@@ -95,24 +79,20 @@ std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
             break;
 
         case ENET_EVENT_TYPE_DISCONNECT: {
-            if (logger_component.logging_enabled) {
-                logger_component.get_logger()->info("Client {} disconnected.", event.peer->address.host);
-            }
+
+            logger.info("Client {} disconnected.", event.peer->address.host);
 
             auto it = std::find_if(client_id_to_enet_peer.begin(), client_id_to_enet_peer.end(),
                                    [&](const auto &pair) { return pair.second == event.peer; });
             if (it != client_id_to_enet_peer.end()) {
-                if (logger_component.logging_enabled) {
-                    logger_component.get_logger()->info("Client {} disconnected.", it->first);
-                }
+
+                logger.info("Client {} disconnected.", it->first);
                 client_id_to_enet_peer.erase(it);
 
                 if (on_disconnect_callback) {
                     on_disconnect_callback(it->first);
                 } else {
-                    if (logger_component.logging_enabled) {
-                        logger_component.get_logger()->warn("on_disconnect_callback is not set. Skipping callback.");
-                    }
+                    logger.warn("on_disconnect_callback is not set. Skipping callback.");
                 }
             }
 
@@ -175,10 +155,8 @@ void Network::reliable_send(unsigned int id_of_client_to_send_to, const void *da
     ENetPacket *packet = enet_packet_create(data, data_size, ENET_PACKET_FLAG_RELIABLE);
     ENetPeer *client_to_send_to = client_id_to_enet_peer.at(id_of_client_to_send_to);
 
-    if (logger_component.logging_enabled) {
-        logger_component.get_logger()->info("Sending packet of size {} bytes to client {}.", data_size,
-                                            client_to_send_to->address.host);
-    }
+    logger.info("Sending packet of size {} bytes to client {}.", data_size, client_to_send_to->address.host);
+
     enet_peer_send(client_to_send_to, 0, packet);
     enet_host_flush(server);
 }
