@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <iostream>
-#include <spdlog/logger.h>
 #include <utility>
 
 Network::Network(uint16_t port) : port(port), server(nullptr) {}
@@ -31,7 +30,7 @@ void Network::initialize_network() {
         throw std::runtime_error("ENet server host creation failed.");
     }
 
-    logger.info("Network initialized on port {}.", port)
+    logger.info("Network initialized on port {}.", port);
 }
 
 std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
