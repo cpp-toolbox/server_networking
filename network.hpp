@@ -23,7 +23,7 @@ class Network {
     explicit Network(uint16_t port);
     ~Network();
 
-    ConsoleLogger logger{"network"};
+    Logger logger{"network"};
 
     void set_on_connect_callback(OnConnectCallback &connect_cb) { this->on_connect_callback = connect_cb; };
     void set_on_disconnect_callback(OnDisconnectCallback &disconnect_cb) {
