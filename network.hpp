@@ -9,13 +9,18 @@
 
 #include "sbpt_generated_includes.hpp"
 
+// NOTE: the param is the client id assigned by the network system
 using OnConnectCallback = std::function<void(unsigned int)>;
 using OnDisconnectCallback = std::function<void(unsigned int)>;
 
 /**
- * \details A server that keeps track of the connected clients and provides methods for sending and receving data
+ * @brief A server that keeps track of the connected clients and provides methods for sending and receving data
+ *
+ * you must frequently call get_network_events_since_last_tick in order for connections to this server to be made, if
+ * you're trying to connect and you cannot that might be why
+ *
  * every connected client has a unique id, which is the index at which the client is stored in the clients vector
- * you must call initialize_network() before working with the system
+ *
  */
 
 class Network {

@@ -5,7 +5,7 @@
 #include <iostream>
 #include <utility>
 
-Network::Network(uint16_t port) : port(port), server(nullptr) {}
+Network::Network(uint16_t port) : port(port), server(nullptr) { initialize_network(); }
 
 Network::~Network() {
     if (server != nullptr) {
