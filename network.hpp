@@ -23,10 +23,20 @@ using OnDisconnectCallback = std::function<void(unsigned int)>;
  *
  */
 
+struct ClientConnectSignal {
+    unsigned int client_id;
+};
+
+struct ClientDisconnectSignal {
+    unsigned int client_id;
+};
+
 class Network {
   public:
     explicit Network(uint16_t port);
     ~Network();
+
+    SignalEmitter event_emitter;
 
     Logger logger{"network"};
 

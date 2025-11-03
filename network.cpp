@@ -84,13 +84,16 @@ std::vector<PacketWithSize> Network::get_network_events_since_last_tick() {
 
             auto it = std::find_if(client_id_to_enet_peer.begin(), client_id_to_enet_peer.end(),
                                    [&](const auto &pair) { return pair.second == event.peer; });
+
+            auto client_id_of_disonnecting_peer = it->first;
             if (it != client_id_to_enet_peer.end()) {
 
                 global_logger.info("client {} disconnected.", it->first);
                 client_id_to_enet_peer.erase(it);
 
                 if (on_disconnect_callback) {
-                    on_disconnect_callback(it->first);
+                    event_emitter.emit(ClientDisconnectSignal{client_id_of_disonnecting_peer});
+                    on_disconnect_callback(client_id_of_disonnecting_peer);
                 } else {
                     global_logger.warn("on_disconnect_callback is not set. Skipping callback.");
                 }
