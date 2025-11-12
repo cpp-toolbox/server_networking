@@ -38,8 +38,6 @@ class Network {
 
     SignalEmitter event_emitter;
 
-    Logger logger{"network"};
-
     void set_on_connect_callback(OnConnectCallback &connect_cb) { this->on_connect_callback = connect_cb; };
     void set_on_disconnect_callback(OnDisconnectCallback &disconnect_cb) {
         this->on_disconnect_callback = disconnect_cb;
