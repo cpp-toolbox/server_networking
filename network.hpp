@@ -16,11 +16,13 @@ using OnDisconnectCallback = std::function<void(unsigned int)>;
 /**
  * @brief A server that keeps track of the connected clients and provides methods for sending and receving data
  *
- * you must frequently call get_network_events_since_last_tick in order for connections to this server to be made, if
- * you're trying to connect and you cannot that might be why
+ * @warn you must frequently call get_network_events_since_last_tick in order for connections to this server to be made,
+ * if you're trying to connect and you cannot that might be why
  *
  * every connected client has a unique id, which is the index at which the client is stored in the clients vector
  *
+ * @note if a client randomly disconnects from the server after a fixed period of time its most likely because the
+ * client is not calling get network events which keeps the connection going
  */
 
 struct ClientConnectSignal {
@@ -33,7 +35,7 @@ struct ClientDisconnectSignal {
 
 class Network {
   public:
-    explicit Network(uint16_t port);
+    explicit Network(uint16_t port = 7777);
     ~Network();
 
     SignalEmitter event_emitter;
@@ -44,6 +46,9 @@ class Network {
     };
     void initialize_network();
 
+    /**
+     * @note this function must be called for connections to even be found.
+     */
     std::vector<PacketWithSize> get_network_events_since_last_tick();
     void unreliable_broadcast(const void *data, size_t data_size);
     void unreliable_send(unsigned int id_of_client_to_send_to, const void *data, size_t data_size);
